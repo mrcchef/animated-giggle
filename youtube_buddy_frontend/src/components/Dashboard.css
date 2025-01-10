@@ -1,0 +1,46 @@
+.dashboard {
+  text-align: center;
+  padding: 20px;
+}
+
+h1 {
+  font-size: 3rem;
+  color: #007bff;
+  text-shadow: 1px 1px #333;
+}
+
+.form {
+  margin-top: 20px;
+}
+
+input,
+select,
+button {
+  margin: 10px;
+  padding: 10px;
+  font-size: 1rem;
+}
+
+input,
+select {
+  width: 300px;
+}
+
+button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+.error-popup {
+  margin-top: 20px;
+  background-color: #f5c6cb;
+  color: #721c24;
+  padding: 10px;
+  border-radius: 5px;
+}
