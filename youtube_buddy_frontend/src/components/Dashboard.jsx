@@ -5,61 +5,91 @@ import {
   Button,
   CircularProgress,
   Container,
-  MenuItem,
   Paper,
-  Select,
   Snackbar,
   TextField,
   Typography,
 } from '@mui/material';
 import axios from 'axios';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [url, setUrl] = useState('');
-  const [language, setLanguage] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState({ show: false, message: '' });
 
+  // Extract video ID from YouTube URL
   const extractVideoId = (url) => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = url.match(regExp);
     return match && match[2].length === 11 ? match[2] : null;
   };
 
+  // Validate YouTube URL
+  const isValidYoutubeUrl = (url) => {
+    const pattern = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
+    return pattern.test(url);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const videoId = extractVideoId(url);
-
-    if (!videoId) {
-      setError(true);
+    
+    // Validate URL
+    if (!isValidYoutubeUrl(url)) {
+      setError({ 
+        show: true, 
+        message: 'Please enter a valid YouTube URL' 
+      });
       return;
     }
 
     setLoading(true);
+    
     try {
-      
-      const response = await axios.post('http://0.0.0.0:8000/summarize', {
-        video_id: videoId,
-        language_code: language,
-      },
-      {
-          headers: {
-              'Content-Type': 'application/json',
-          },
-        }
-    );
+      const response = await axios.get(`http://localhost:8000/api/summarize`, {
+        params: { url: url },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-      if (response.data.summary) {
-        navigate('/summary', { state: { summary: response.data.summary } });
+      if (response.data.status === 'success' && response.data.data.summary) {
+        navigate('/summary', { 
+          state: { 
+            summary: response.data.data.summary,
+            videoUrl: url 
+          } 
+        });
+      } else {
+        throw new Error('Invalid response format');
       }
     } catch (error) {
-      setError(true);
+      let errorMessage = 'Failed to generate the summary. Please try again.';
+      
+      if (error.response) {
+        // Server responded with error
+        errorMessage = error.response.data.message || errorMessage;
+      } else if (error.request) {
+        // No response received
+        errorMessage = 'Unable to connect to the server. Please check your internet connection.';
+      }
+
+      setError({ 
+        show: true, 
+        message: errorMessage 
+      });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCloseError = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setError({ show: false, message: '' });
   };
 
   return (
@@ -92,13 +122,14 @@ const Dashboard = () => {
               fontWeight: 'bold',
               background: 'linear-gradient(45deg, #2196f3 30%, #21CBF3 90%)',
               backgroundClip: 'text',
-              textFillColor: 'transparent',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
               mb: 4,
             }}
           >
-            Youtube Summariser
+            YouTube Summarizer
           </Typography>
-
+          
           <form onSubmit={handleSubmit}>
             <TextField
               fullWidth
@@ -106,51 +137,52 @@ const Dashboard = () => {
               variant="outlined"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
+              error={error.show}
+              helperText={error.show ? error.message : ''}
               sx={{ mb: 3 }}
               required
+              placeholder="https://www.youtube.com/watch?v=..."
             />
-
-            <Select
-              fullWidth
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              displayEmpty
-              sx={{ mb: 3 }}
-              required
-            >
-              <MenuItem value="" disabled>
-                Select Language
-              </MenuItem>
-              <MenuItem value="en">English</MenuItem>
-              <MenuItem value="es">Spanish</MenuItem>
-              <MenuItem value="fr">French</MenuItem>
-              <MenuItem value="de">German</MenuItem>
-              <MenuItem value="hi">Hindi</MenuItem>
-            </Select>
 
             <Button
               type="submit"
               variant="contained"
               fullWidth
               size="large"
-              disabled={loading}
+              disabled={loading || !url.trim()}
               sx={{
                 height: 56,
                 background: 'linear-gradient(45deg, #2196f3 30%, #21CBF3 90%)',
+                '&:disabled': {
+                  background: '#ccc',
+                },
               }}
             >
-              {loading ? <CircularProgress size={24} /> : 'Generate Summary'}
+              {loading ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <CircularProgress size={24} color="inherit" />
+                  <span>Generating Summary...</span>
+                </Box>
+              ) : (
+                'Generate Summary'
+              )}
             </Button>
           </form>
         </Paper>
 
         <Snackbar
-          open={error}
+          open={error.show}
           autoHideDuration={6000}
-          onClose={() => setError(false)}
+          onClose={handleCloseError}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         >
-          <Alert severity="error" sx={{ width: '100%' }}>
-            Failed to generate the Summary. Please try again.
+          <Alert 
+            onClose={handleCloseError} 
+            severity="error" 
+            sx={{ width: '100%' }}
+            variant="filled"
+          >
+            {error.message}
           </Alert>
         </Snackbar>
       </Box>
