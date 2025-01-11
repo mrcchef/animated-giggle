@@ -10,8 +10,11 @@ exports.summarizeVideo = asyncHandler(async (req, res) => {
         throw new AppError('YouTube URL is required', 400);
     }
 
+    console.log(url)
     // Get transcript
     const transcript = await YoutubeService.getTranscript(url);
+
+    console.log(transcript);
 
     // Generate summary
     const summary = await openAIService.generateSummary(transcript);

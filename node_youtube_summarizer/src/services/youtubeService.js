@@ -5,6 +5,7 @@ class YoutubeService {
     static async getTranscript(url) {
         try {
             const transcript = await YoutubeTranscript.fetchTranscript(url);
+            console.log(transcript)
             const fullText = transcript.map(entry => entry.text).join(' ');
             return fullText;
         } catch (error) {
